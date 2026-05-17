@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"os"
 	"time"
+	"log"
+	"io"
 )
 
 func main() {
@@ -57,21 +59,32 @@ func main() {
 	// the response is struct to *http.Response
 	// status code, headers, body, content length,...
 	// resp.Status, resp.StatusCode, resp.Header, resp.Body
-	resp, err := http.Get(rawURL)
+	maxRetries := 3
+	var resp *http.Response
+	var errr error
+	for i:=0; i < maxRetries; i++{
+		resp, errr = http.Get(rawURL)
+		if errr == nil {
+			break
+		}
+		fmt.Println("Retryting...", i+1)
+	}
 	if err != nil {
 		fmt.Println("Request failed:\n", err)
+		// as this error is system err not user one
+		// log.Fatal ==> same as: Printf(err), followed by os.Exit(1)
 		log.Fatal(err)
-
-	} else {
-		fmt.Println("The status code is: %s \n", resp.Status)
-		fmt.Println("The URL is:\n", resp.Request.URL.String())
+		return
 	}
-	// the body is stream, and might be bigger than memory
-	// it's stream, and we need to close that stream once we finish
-	// defer => make sure that this runs at the end of the function
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil{
 	log.Fatal(err)
+	return
 	}
+	fmt.Printf("The status code is: %d \n",resp.StatusCode, "Body: %s", string(body) )
+	fmt.Println("The URL is:", resp.Request.URL.String())
+	// the body is stream, and might be bigger than memory
+	// it's stream, and we need to close that stream once we finish
+	// defer => make sure that this runs at the end of the function
 }
